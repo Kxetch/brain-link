@@ -11,18 +11,35 @@
     try { launch = typeof tizen.application.launchAppControl === 'function'; } catch (e) {}
     try { appInfo = tizen.application.getAppInfo().id; } catch (e) {}
     return {
-      ok: true, service: 'brain-link', version: '0.1.0', uptimeS: Math.round((Date.now() - started) / 1000),
+      ok: true, service: 'brain-link', version: '0.1.1', uptimeS: Math.round((Date.now() - started) / 1000),
       node: process.version, listening: state.listening, error: state.error, requests: state.requests,
       canLaunchApps: launch, appId: appInfo
     };
+  }
+
+  // Step 2 (test): ask TizenBrew to open one module. Only the Sunrise module is allowed for now, and only from the LAN.
+  var ALLOWED = ['Kxetch/brain-sunrise'];
+  function launch(url, done) {
+    var m = /[?&]module=([^&]+)/.exec(url);
+    var name = m ? decodeURIComponent(m[1]) : '';
+    if (ALLOWED.indexOf(name) < 0) return done({ ok: false, error: 'module not allowed: ' + name });
+    try {
+      var pkg = tizen.application.getAppInfo().id.split('.')[0];
+      var data = new tizen.ApplicationControlData('module', [JSON.stringify({ moduleName: name, moduleType: 'gh', args: '' })]);
+      var ctrl = new tizen.ApplicationControl('http://tizen.org/appcontrol/operation/default', null, null, null, [data]);
+      tizen.application.launchAppControl(ctrl, pkg + '.TizenBrewStandalone',
+        function () { done({ ok: true, launched: name }); },
+        function (e) { done({ ok: false, error: 'launch failed: ' + (e && e.message) }); });
+    } catch (e) { done({ ok: false, error: 'exception: ' + e }); }
   }
 
   if (http) {
     try {
       var server = http.createServer(function (req, res) {
         state.requests++;
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify(snapshot()));
+        var done = function (obj) { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(obj)); };
+        if (req.url.indexOf('/launch') === 0) return launch(req.url, done);
+        done(snapshot());
       });
       server.on('error', function (e) { state.error = String(e); state.listening = false; });
       server.on('listening', function () { state.listening = true; });

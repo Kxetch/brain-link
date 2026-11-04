@@ -1,6 +1,6 @@
 {
   "name": "brain-link",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Lets a home server on your network ask this TV to do things (a TizenBrew service module).",
   "packageType": "app",
   "appName": "Brain Link",
