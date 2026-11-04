@@ -5,7 +5,7 @@
   "packageType": "app",
   "appName": "Brain Link",
   "appPath": "index.html",
-  "serviceFile": "service.js",
+  "serviceFile": "service.v2.js",
   "keys": [],
   "license": "MIT"
 }
