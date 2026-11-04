@@ -11,7 +11,7 @@
     try { launch = typeof tizen.application.launchAppControl === 'function'; } catch (e) {}
     try { appInfo = tizen.application.getAppInfo().id; } catch (e) {}
     return {
-      ok: true, service: 'brain-link', version: '0.1.2', uptimeS: Math.round((Date.now() - started) / 1000),
+      ok: true, service: 'brain-link', version: '0.1.3', uptimeS: Math.round((Date.now() - started) / 1000),
       node: process.version, listening: state.listening, error: state.error, requests: state.requests,
       canLaunchApps: launch, appId: appInfo
     };
@@ -22,13 +22,15 @@
   function launch(url, done) {
     var m = /[?&]module=([^&]+)/.exec(url);
     var name = m ? decodeURIComponent(m[1]) : '';
+    var o = /[?&]op=([a-z]+)/.exec(url);
+    var op = o && o[1] === 'default' ? 'default' : 'view';      // 'view' is what TizenTube itself uses
     if (ALLOWED.indexOf(name) < 0) return done({ ok: false, error: 'module not allowed: ' + name });
     try {
-      var pkg = tizen.application.getAppInfo().id.split('.')[0];
+      var pkg = tizen.application.getAppInfo().packageId || tizen.application.getAppInfo().id.split('.')[0];
       var data = new tizen.ApplicationControlData('module', [JSON.stringify({ moduleName: name, moduleType: 'gh', args: '' })]);
-      var ctrl = new tizen.ApplicationControl('http://tizen.org/appcontrol/operation/default', null, null, null, [data]);
+      var ctrl = new tizen.ApplicationControl('http://tizen.org/appcontrol/operation/' + op, null, null, null, [data]);
       tizen.application.launchAppControl(ctrl, pkg + '.TizenBrewStandalone',
-        function () { done({ ok: true, launched: name }); },
+        function () { done({ ok: true, launched: name, op: op, pkg: pkg }); },
         function (e) { done({ ok: false, error: 'launch failed: ' + (e && e.message) }); });
     } catch (e) { done({ ok: false, error: 'exception: ' + e }); }
   }
