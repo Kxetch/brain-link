@@ -1,0 +1,4 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Brain Link</title>
+<style>html,body{margin:0;height:100%;background:#0b1220;color:#e7ecf3;font:600 4vh sans-serif;display:flex;align-items:center;justify-content:center;text-align:center}small{display:block;margin-top:2vh;font-weight:400;opacity:.7;font-size:2.4vh}</style></head>
+<body><div>Brain Link<small>Runs in the background. Nothing to do here. Press Back to leave.</small></div>
+<script>addEventListener('keydown',function(e){if(e.keyCode===10009||e.keyCode===13){try{tizen.application.getCurrentApplication().exit();}catch(x){history.back();}}});</script></body></html>
