@@ -11,7 +11,7 @@
     try { launch = typeof tizen.application.launchAppControl === 'function'; } catch (e) {}
     try { appInfo = tizen.application.getAppInfo().id; } catch (e) {}
     return {
-      ok: true, service: 'brain-link', version: '0.1.1', uptimeS: Math.round((Date.now() - started) / 1000),
+      ok: true, service: 'brain-link', version: '0.1.2', uptimeS: Math.round((Date.now() - started) / 1000),
       node: process.version, listening: state.listening, error: state.error, requests: state.requests,
       canLaunchApps: launch, appId: appInfo
     };
@@ -39,6 +39,11 @@
         state.requests++;
         var done = function (obj) { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(obj)); };
         if (req.url.indexOf('/launch') === 0) return launch(req.url, done);
+        if (req.url.indexOf('/exit') === 0) {          // lets the brain restart this service so updates take effect (token check comes later)
+          done({ ok: true, exiting: true });
+          setTimeout(function () { try { tizen.application.getCurrentApplication().exit(); } catch (e) {} }, 300);
+          return;
+        }
         done(snapshot());
       });
       server.on('error', function (e) { state.error = String(e); state.listening = false; });
