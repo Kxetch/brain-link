@@ -1,7 +1,7 @@
-// Brain Link 0.1.4: lets the home server (the "brain") ask this TV to open a page, start an app or start a TizenBrew module.
+// Brain Link 0.1.5 (0.1.4 plus /modules, /autolaunch and /run for TizenBrew modules): lets the home server (the "brain") ask this TV to open a page, start an app or start a TizenBrew module.
 // Plain old JavaScript (var, function) because older TVs run a very old Node.
 (function () {
-  var VERSION = '0.1.4';
+  var VERSION = '0.1.5';
   var BRAIN = ['192.168.1.158'];             // only these addresses may change anything; everyone else can only read the status
   var PORT = 8090;
   var started = Date.now();
@@ -73,6 +73,56 @@
     } catch (e) { done({ ok: false, error: 'exception: ' + e }); }
   }
 
+
+  // ---- TizenBrew modules: read its config, change the autolaunch module, restart it so the module starts ----
+  var fs; try { fs = require('fs'); } catch (e) {}
+  var CONFIG = '/home/owner/share/tizenbrewConfig.json';
+  function readCfg() {
+    if (!fs || !fs.existsSync(CONFIG)) return { modules: ['npm/@foxreis/tizentube'], autoLaunchServiceList: [], autoLaunchModule: '' };
+    return JSON.parse(fs.readFileSync(CONFIG, 'utf8'));
+  }
+  function modules(q, done) {
+    try { var c = readCfg(); done({ ok: true, modules: c.modules, autoLaunchModule: c.autoLaunchModule, autoLaunchServiceList: c.autoLaunchServiceList }); }
+    catch (e) { done({ ok: false, error: 'cannot read config: ' + e }); }
+  }
+  // module is "npm/@foxreis/tizentube" or "gh/user/repo" as TizenBrew lists it; empty switches autolaunch off
+  function setAuto(name) {
+    if (name !== '' && !/^(npm|gh)\/[A-Za-z0-9._@\/\-]{2,100}$/.test(name)) return { ok: false, error: 'bad module name' };
+    var c = readCfg();
+    if (name !== '' && c.modules.indexOf(name) < 0) return { ok: false, error: 'not in the TizenBrew module list', modules: c.modules };
+    var before = c.autoLaunchModule || '';
+    c.autoLaunchModule = name;
+    fs.writeFileSync(CONFIG, JSON.stringify(c, null, 4));
+    return { ok: true, autoLaunchModule: name, previous: before };
+  }
+  function autolaunch(q, done) {
+    try { done(setAuto(q.module === undefined ? '' : q.module)); } catch (e) { done({ ok: false, error: 'exception: ' + e }); }
+  }
+  // Make TizenBrew start a module: set it as the autolaunch module, close TizenBrew's screen, open it again.
+  function run(q, done) {
+    var r;
+    try { r = setAuto(q.module || ''); } catch (e) { return done({ ok: false, error: 'exception: ' + e }); }
+    if (!r.ok) return done(r);
+    var pkg;
+    try { pkg = tizen.application.getAppInfo().packageId || tizen.application.getAppInfo().id.split('.')[0]; } catch (e) { return done({ ok: false, error: 'no package id' }); }
+    var id = pkg + '.TizenBrewStandalone';
+    var finished = false;
+    function go() {
+      if (finished) return; finished = true;
+      try {
+        tizen.application.launch(id,
+          function () { done({ ok: true, started: q.module, previous: r.previous, note: 'autolaunch left set to this module' }); },
+          function (e) { done({ ok: false, error: 'launch failed: ' + (e && e.message), previous: r.previous }); });
+      } catch (e) { done({ ok: false, error: 'exception: ' + e }); }
+    }
+    try {
+      var rq = http.request({ host: '127.0.0.1', port: 8001, path: '/api/v2/applications/' + id, method: 'DELETE' }, function (res) { res.resume(); setTimeout(go, 2500); });
+      rq.on('error', function () { setTimeout(go, 500); });
+      rq.setTimeout(4000, function () { try { rq.abort(); } catch (e) {} });
+      rq.end();
+    } catch (e) { go(); }
+  }
+
   if (http) {
     try {
       var server = http.createServer(function (req, res) {
@@ -80,7 +130,11 @@
         var send = function (code, obj) { res.writeHead(code, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(obj)); };
         var who = String((req.socket && req.socket.remoteAddress) || '').replace(/^::ffff:/, '');
         var p = path(req.url), q = query(req.url);
-        var routes = { '/open': open, '/app': app, '/launch': launch };
+        var routes = { '/open': open, '/app': app, '/launch': launch, '/autolaunch': autolaunch, '/run': run };
+        if (p === '/modules') {
+          if (BRAIN.indexOf(who) < 0) return send(403, { ok: false, error: 'not allowed from ' + who });
+          return modules(q, function (obj) { send(200, obj); });
+        }
         if (routes[p] || p === '/exit') {
           if (BRAIN.indexOf(who) < 0) return send(403, { ok: false, error: 'not allowed from ' + who });
           if (req.method !== 'POST') return send(405, { ok: false, error: 'use POST' });

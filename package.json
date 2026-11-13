@@ -1,11 +1,11 @@
 {
   "name": "brain-link",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Lets a home server on your network ask this TV to do things (a TizenBrew service module).",
   "packageType": "app",
   "appName": "Brain Link",
   "appPath": "index.html",
-  "serviceFile": "service.v3.js",
+  "serviceFile": "service.v4.js",
   "keys": [],
   "license": "MIT"
 }

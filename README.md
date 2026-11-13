@@ -10,4 +10,10 @@ MIT licensed.
 
 `POST /open?url=<http(s) url>` opens a page in the TV browser, `POST /app?id=<app id>` starts an installed app,
 `POST /launch?module=<user/repo>&type=gh|npm&op=view|default` asks TizenBrew to start a module, `POST /exit` restarts the service.
-`GET /` is a read-only status for everyone on the network. Edit `BRAIN` at the top of `service.v3.js` for your own server address.
+`GET /` is a read-only status for everyone on the network. Edit `BRAIN` at the top of `service.v4.js` for your own server address.
+
+## 0.1.5: TizenBrew modules
+
+`GET /modules` lists TizenBrew's installed modules and autolaunch setting. `POST /autolaunch?module=npm/@foxreis/tizentube` (or empty to switch off)
+changes the autolaunch module. `POST /run?module=npm/@foxreis/tizentube` sets it, closes TizenBrew's screen and opens it again, so the module starts.
+`/run` leaves autolaunch set; the caller restores the old value (returned as `previous`) with `/autolaunch`.
