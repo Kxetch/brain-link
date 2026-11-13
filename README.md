@@ -5,3 +5,9 @@ A TizenBrew service module that lets a home server on your own network ask a Sam
 Install in TizenBrew: Module Manager, Add GitHub module, type `Kxetch/brain-link` (without `gh/`). Then Settings, Autolaunch Settings for services, pick Brain Link.
 
 MIT licensed.
+
+## 0.1.4: routes (only the brain's address may use them)
+
+`POST /open?url=<http(s) url>` opens a page in the TV browser, `POST /app?id=<app id>` starts an installed app,
+`POST /launch?module=<user/repo>&type=gh|npm&op=view|default` asks TizenBrew to start a module, `POST /exit` restarts the service.
+`GET /` is a read-only status for everyone on the network. Edit `BRAIN` at the top of `service.v3.js` for your own server address.
